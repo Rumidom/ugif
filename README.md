@@ -20,3 +20,9 @@ https://github.com/user-attachments/assets/f57805bc-e20f-4f8e-8c96-0629b0321fab
 # TODO
 - [ ] Add option to hold the decompressed image in memory
 - [ ] Add animation support
+
+# LICENSE:
+this project is [MIT licensed](https://github.com/Rumidom/micropython_fontlib/blob/main/LICENSE)
+
+# Support
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M41NQV7I)
