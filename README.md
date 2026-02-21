@@ -18,6 +18,7 @@ https://github.com/user-attachments/assets/f57805bc-e20f-4f8e-8c96-0629b0321fab
 
 
 # TODO
+- [ ] Add support for monocrome gifs
 - [ ] Add option to hold the decompressed image in memory
 - [ ] Add animation support
 
