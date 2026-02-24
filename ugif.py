@@ -18,11 +18,12 @@ def color565(red, green=0, blue=0):
     return (red & 0xF8) << 8 | (green & 0xFC) << 3 | blue >> 3
 
 class gif():
-    def __init__(self,path):
+    def __init__(self,path,useram=False,verbose = True):
         src = open(path, "rb")
         Header = self.getHeader(src)
-        self.path = path
         dummybuffer = bytearray(os.stat(path)[6])
+        self.path = path
+        self.useram = useram
         self.ID_tag = Header[0]
         self.Version = Header[1]
         self.Width = Header[2]
@@ -33,25 +34,51 @@ class gif():
         ColorTableLen = 0
         self.ColorTable = []
         self.ColorTable565 = []
+        self.monocrome = False
+        self.AnimTime = 0
+        self.currentFrameIndex = 0
         if (self.Field >> 7) & 1:
             ColorTableLen = 2**((self.Field & 0b111)+1)
             self.getColorTable(src,ColorTableLen)
-            self.getColorTable565()
-        print(path)
-        print("Colors: ",ColorTableLen)
-        print("Size: ",self.Width,",",self.Height)
-        self.Frames = []
-        self.loopcount = 0
-        self.FrameTimes = []
-        self.getData(src)
-        print("loopcount: ",self.loopcount)
-        print("frameTimes: ",self.FrameTimes)
+            if ColorTableLen == 2: 
+                self.getColorTable = [False,True]
+                self.monocrome = True
+            else:
+                self.getColorTable565()
+        else:
+            raise Exception("Only gifs with global color table are supported")
         
+
+        self.Frames = []
+        self.decoded = []
+        self.n_frames = 0
+        self.loopcount = 0
+        self.getData(src)
+        if verbose:
+            print(path)
+            print("Colors: ",ColorTableLen)
+            print("Size: ",self.Width,",",self.Height)
+            print("Loop count: ",self.loopcount)
+            print("Frames: ",self.n_frames)
+                
     def getColorTable565(self):
         for color in self.ColorTable:
             self.ColorTable565.append(color565(color[0],color[1],color[2]))
-            
-    def lzw_DecodeToScreen(self,data,callback, palBits,useColor565=True):
+    
+    def byteArrayToScreen(self,scr_x,scr_y):
+        for i,byte in enumerate(entry):
+            count = i+imageDataLen
+            scr_x = count%frameSize[0]
+            if scr_x == 0 and count != 0:
+                 scr_y+= 1
+            if self.monocrome:
+                callback(scr_x,scr_y,byte)
+            else:
+                if useColor565:
+                    callback(scr_x,scr_y,self.ColorTable565[byte])
+                else:
+                    callback(scr_x,scr_y,self.ColorTable[byte])
+    def lzw_DecodeToScreen(self,data,callback,startPos,frameSize, palBits,useColor565=True):
         # code from: https://github.com/qalle2/pygif/blob/main/gifdec.py
         # decode Lempel-Ziv-Welch (LZW) data (bytes)
         # palBits: palette bit depth in LZW encoding (2-8)
@@ -67,13 +94,13 @@ class gif():
         entry     = bytearray()       # reconstructed dictionary entry
         codeCount = 0                 # number of LZW codes read (statistics only)
         bitCount  = 0                 # number of LZW bits read (statistics only)
-
+        decoded_data   = bytearray()
         # LZW dictionary: index = code, value = entry (reference to another code,
         # final byte)
         lzwDict = [(None, i) for i in range(2 ** palBits + 2)]
         imageDataLen = 0
-        scr_x = 0
-        scr_y = 0
+        scr_x = startPos[0]
+        scr_y = startPos[1]
         while True:
             # get current LZW code (0-4095) from remaining data:
             # 1) get the 1-3 bytes that contain the code; equivalent to:
@@ -126,13 +153,16 @@ class gif():
                 entry = ByteArrayReverse(entry)
                 for i,byte in enumerate(entry):
                     count = i+imageDataLen
-                    scr_x = count%self.Width
+                    scr_x = count%frameSize[0] + startPos[0]
                     if scr_x == 0 and count != 0:
                          scr_y+= 1
-                    if useColor565:
-                        callback(scr_x,scr_y,self.ColorTable565[byte])
+                    if self.monocrome:
+                        callback(scr_x,scr_y,byte)
                     else:
-                        callback(scr_x,scr_y,self.ColorTable[byte])
+                        if useColor565:
+                            callback(scr_x,scr_y,self.ColorTable565[byte])
+                        else:
+                            callback(scr_x,scr_y,self.ColorTable[byte])
                     
                 imageDataLen += len(entry)
                 # prepare to add a dictionary entry
@@ -140,6 +170,10 @@ class gif():
                     prevCode = code
                 if len(lzwDict) == 2 ** codeLen and codeLen < 12:
                     codeLen += 1
+                if self.useram:
+                    decoded_data += entry
+            if len(decoded_data)>0:
+                self.decoded.append(decoded_data)
             gc.collect()
             #print(f"LZW data: {codeCount} codes, {bitCount} bits, {imageDataLen} pixels")
     
@@ -190,9 +224,17 @@ class gif():
     def ReadGraphicsControlBlock(self,src):
         #print('GraphicsControlBlock')
         blockDict = self.ReadBlock(src)
-        delay = blockDict['BlockData'][1]*10
-        delay = delay+ blockDict['BlockData'][2]
-        self.FrameTimes.append(delay)
+        packField = blockDict['BlockData'][0]
+        dispMethod = (packField&0b11100) >> 2
+        # 0 - disposal method not specified
+        # 1 - leave the image in place and draw the next image on top of it
+        # 2 - the canvas should be restored to the background color
+        # 3 - restore the canvas to its previous state before the current image was drawn
+        TranspFlag = packField&1
+        delay = int.from_bytes(blockDict['BlockData'][1:2],'big')*10
+        AnimData = {'anim':[dispMethod,TranspFlag,delay]}
+        self.Frames.append(AnimData)
+        #disposalMethod = 2**((self.Field & 0b111)+1)
         
     def ReadApplicationBlock(self,src):
         #print('ApplicationBlock')
@@ -213,38 +255,55 @@ class gif():
         #print('FreeMem:',gc.mem_free())
         frameMetaData = src.read(9)
         #print('frameMetaData: ',frameMetaData)
+        imageLeft = int.from_bytes(frameMetaData[0:1], 'little') 
+        imageTop = int.from_bytes(frameMetaData[2:3], 'little')
         frameWidth = int.from_bytes(frameMetaData[4:6], 'little') 
-        frameHeight = int.from_bytes(frameMetaData[6:8], 'little') 
+        frameHeight = int.from_bytes(frameMetaData[6:8], 'little')
         localTableFlag = frameMetaData[8] >> 7
         interlaceFlag = frameMetaData[8] >> 6
         BytesToData = src.tell()
         frameLZW_min = src.read(1)[0]
-        FrameDict = {'Meta':{'locc':localTableFlag,'intlc':interlaceFlag},'BytesToData':BytesToData}
-        if frameWidth != self.Width:
-            FrameDict['Meta']['w'] = frameWidth
-        if frameHeight != self.Height:   
-            FrameDict['Meta']['h'] = frameHeight
-        print('FrameDict: ',FrameDict)
+        # imgdata : [imlft,imtop,Width,Height,locc,intlc]
+        FrameDict = {'img':[imageLeft,imageTop,frameWidth,frameHeight,localTableFlag,interlaceFlag],'BytesToData':BytesToData}
+        
+        #change to skip stead of reading
         while True:
             subBlockLenght = src.read(1)[0]
             if subBlockLenght == 0:
                 break
             subBlockData = src.read(subBlockLenght)
             #print(len(subBlockData))
-        self.Frames.append(FrameDict)
+        self.Frames[-1].update(FrameDict)
+        self.n_frames += 1
+        #print('FrameDict: ',self.Frames[-1])
         #print('FreeMem:',gc.mem_free())
     
-    def BlitToScreen(self,FrameIndex,callback):
+    def BlitFrameToScreen(self,FrameIndex,callback):
         startTime = time.time()
-        src = open(self.path, "rb")
-        src.seek(self.Frames[FrameIndex]['BytesToData'])
-        frameLZW_min = src.read(1)[0]
-        frameData = self.ReadFrameData(src)
-        src.close()
+
+        if len(self.decoded) > FrameIndex:
+            decodedFrameData = self.decoded[FrameIndex]
+            
+        else:
+            src = open(self.path, "rb")
+            src.seek(self.Frames[FrameIndex]['BytesToData'])
+            frameLZW_min = src.read(1)[0]
+            frameData = self.ReadFrameData(src)
+            startPos = (self.Frames[FrameIndex]['img'][0],self.Frames[FrameIndex]['img'][1])
+            frameSize = (self.Frames[FrameIndex]['img'][2],self.Frames[FrameIndex]['img'][3])
+            self.lzw_DecodeToScreen(frameData,callback,startPos,frameSize,frameLZW_min)
+            src.close()
         #print('frameData Ready')
-        self.lzw_DecodeToScreen(frameData,callback,frameLZW_min)
-        print("imageBlited, Time: ",time.time()-startTime)
-        
+        #print('start',startPos)
+        #print("imageBlited, Time: ",time.time()-startTime)
+    
+    def BlitAnimationToScreen(self,callback):
+        self.BlitFrameToScreen(self.currentFrameIndex,callback)        
+        if (time.ticks_ms()-self.AnimTime)//self.Frames[self.currentFrameIndex]['anim'][2] > 0:
+            self.AnimTime = time.ticks_ms()
+            self.currentFrameIndex += 1
+            if self.currentFrameIndex > self.n_frames-1:
+                self.currentFrameIndex = 0
     def getData(self,src):
         Supported_Extensions = {
         b'\xf9': self.ReadGraphicsControlBlock,        
