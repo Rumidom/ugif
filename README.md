@@ -1,6 +1,7 @@
 # ugif
 This is a micropython library for decoding gifs on low resources. Modern microcontrollers have a lot more ram than they used to have but it is still barely enough to handle images. A single 240x240 compressed gif frame takes about 35kb of memory, which is quite significant. This library loads the compressed frames dynamically directly to the screen via a callback function. (this approach works but its very slow.)
 
+https://github.com/user-attachments/assets/f57805bc-e20f-4f8e-8c96-0629b0321fab
 
 ## Displaying static Gifs
 ```python
@@ -42,7 +43,7 @@ while True:
 ```
 
 
-https://github.com/user-attachments/assets/f57805bc-e20f-4f8e-8c96-0629b0321fab
+
 
 
 
