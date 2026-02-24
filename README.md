@@ -51,7 +51,7 @@ while True:
 - [x] Add support for monocrome gifs
 - [x] Add option to hold the decompressed image in memory
 - [x] Add animation support
-- [ ] Use 1 bit per color to sabe ram on monocrome mode
+- [ ] Use 1 bit per color to save ram on monocrome mode
 
 # LICENSE:
 this project is [MIT licensed](https://github.com/Rumidom/micropython_fontlib/blob/main/LICENSE)
