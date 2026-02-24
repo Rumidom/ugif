@@ -19,8 +19,10 @@ fbuf.fill(0)
 def drawToScreen_PixelbyPixel(x,y,color):
     oled.pixel(x, y,color)
 
-gif_obj = gif('SynthWave_Car_128x64.gif')
+gif_obj = gif('Bongo_Cat_64x64.gif',useram = True)
+gif_obj.setPosition(32,0)
 
 while True:
     gif_obj.BlitAnimationToScreen(drawToScreen_PixelbyPixel)
     oled.show()
+    

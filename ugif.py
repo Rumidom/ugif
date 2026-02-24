@@ -18,11 +18,13 @@ def color565(red, green=0, blue=0):
     return (red & 0xF8) << 8 | (green & 0xFC) << 3 | blue >> 3
 
 class gif():
-    def __init__(self,path,useram=False,verbose = True):
+    def __init__(self,path,x=0,y=0,useram=False,verbose = True):
         src = open(path, "rb")
         Header = self.getHeader(src)
         dummybuffer = bytearray(os.stat(path)[6])
         self.path = path
+        self.x = x
+        self.y = y
         self.useram = useram
         self.ID_tag = Header[0]
         self.Version = Header[1]
@@ -31,12 +33,13 @@ class gif():
         self.Field = Header[4][0]
         self.Background_ci = Header[5][0]
         self.Pixel_AR = Header[6][0]
-        ColorTableLen = 0
+        
         self.ColorTable = []
         self.ColorTable565 = []
         self.monocrome = False
         self.AnimTime = 0
         self.currentFrameIndex = 0
+        ColorTableLen = 0
         if (self.Field >> 7) & 1:
             ColorTableLen = 2**((self.Field & 0b111)+1)
             self.getColorTable(src,ColorTableLen)
@@ -60,16 +63,20 @@ class gif():
             print("Size: ",self.Width,",",self.Height)
             print("Loop count: ",self.loopcount)
             print("Frames: ",self.n_frames)
-                
+    
+    def setPosition(self,x,y):
+        self.x = x
+        self.y = y
+        
     def getColorTable565(self):
         for color in self.ColorTable:
             self.ColorTable565.append(color565(color[0],color[1],color[2]))
     
-    def byteArrayToScreen(self,scr_x,scr_y):
-        for i,byte in enumerate(entry):
-            count = i+imageDataLen
-            scr_x = count%frameSize[0]
-            if scr_x == 0 and count != 0:
+    def blit(self,arr,callback,startPos,frameSize):
+        scr_y = startPos[1]
+        for i,byte in enumerate(arr):
+            scr_x = i%frameSize[0] + startPos[0]
+            if scr_x == startPos[0] and i != 0:
                  scr_y+= 1
             if self.monocrome:
                 callback(scr_x,scr_y,byte)
@@ -78,7 +85,8 @@ class gif():
                     callback(scr_x,scr_y,self.ColorTable565[byte])
                 else:
                     callback(scr_x,scr_y,self.ColorTable[byte])
-    def lzw_DecodeToScreen(self,data,callback,startPos,frameSize, palBits,useColor565=True):
+
+    def lzw_DecodeToScreen(self,data,callback,startPos,frameSize,palBits,useColor565=True):
         # code from: https://github.com/qalle2/pygif/blob/main/gifdec.py
         # decode Lempel-Ziv-Welch (LZW) data (bytes)
         # palBits: palette bit depth in LZW encoding (2-8)
@@ -151,10 +159,11 @@ class gif():
                     (referredCode, byte) = lzwDict[referredCode]
                     entry.append(byte)
                 entry = ByteArrayReverse(entry)
+                
                 for i,byte in enumerate(entry):
                     count = i+imageDataLen
                     scr_x = count%frameSize[0] + startPos[0]
-                    if scr_x == 0 and count != 0:
+                    if scr_x == startPos[0] and count != 0:
                          scr_y+= 1
                     if self.monocrome:
                         callback(scr_x,scr_y,byte)
@@ -172,9 +181,11 @@ class gif():
                     codeLen += 1
                 if self.useram:
                     decoded_data += entry
-            if len(decoded_data)>0:
-                self.decoded.append(decoded_data)
+
             gc.collect()
+        if (len(decoded_data)>0):
+            print(len(decoded_data))
+            self.decoded.append(decoded_data)
             #print(f"LZW data: {codeCount} codes, {bitCount} bits, {imageDataLen} pixels")
     
     def getColorTable(self,src,ColorTableLen):
@@ -280,18 +291,19 @@ class gif():
     
     def BlitFrameToScreen(self,FrameIndex,callback):
         startTime = time.time()
-
+        frame_x = self.Frames[FrameIndex]['img'][0]
+        frame_y = self.Frames[FrameIndex]['img'][1]
+        frameSize = (self.Frames[FrameIndex]['img'][2],self.Frames[FrameIndex]['img'][3])
+        startPos = (frame_x+self.x,frame_y+self.y)
         if len(self.decoded) > FrameIndex:
-            decodedFrameData = self.decoded[FrameIndex]
-            
+            FrameData = self.decoded[FrameIndex]
+            self.blit(FrameData,callback,startPos,frameSize)
         else:
             src = open(self.path, "rb")
             src.seek(self.Frames[FrameIndex]['BytesToData'])
             frameLZW_min = src.read(1)[0]
-            frameData = self.ReadFrameData(src)
-            startPos = (self.Frames[FrameIndex]['img'][0],self.Frames[FrameIndex]['img'][1])
-            frameSize = (self.Frames[FrameIndex]['img'][2],self.Frames[FrameIndex]['img'][3])
-            self.lzw_DecodeToScreen(frameData,callback,startPos,frameSize,frameLZW_min)
+            frameCompData = self.ReadFrameData(src)
+            self.lzw_DecodeToScreen(frameCompData,callback,startPos,frameSize,frameLZW_min)
             src.close()
         #print('frameData Ready')
         #print('start',startPos)
@@ -304,6 +316,7 @@ class gif():
             self.currentFrameIndex += 1
             if self.currentFrameIndex > self.n_frames-1:
                 self.currentFrameIndex = 0
+                
     def getData(self,src):
         Supported_Extensions = {
         b'\xf9': self.ReadGraphicsControlBlock,        
