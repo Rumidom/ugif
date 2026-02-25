@@ -19,8 +19,8 @@ fbuf.fill(0)
 def drawToScreen_PixelbyPixel(x,y,color):
     oled.pixel(x, y,color)
 
-gif_obj = gif('Bongo_Cat_64x64.gif',useram = True)
-gif_obj.setPosition(32,0)
+gif_obj = gif('jake.gif',useram = True)
+gif_obj.setPosition(0,0)
 
 while True:
     gif_obj.BlitAnimationToScreen(drawToScreen_PixelbyPixel)

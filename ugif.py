@@ -18,7 +18,7 @@ def color565(red, green=0, blue=0):
     return (red & 0xF8) << 8 | (green & 0xFC) << 3 | blue >> 3
 
 class gif():
-    def __init__(self,path,x=0,y=0,useram=False,verbose = True):
+    def __init__(self,path,x=0,y=0,useram=False,verbose = False):
         src = open(path, "rb")
         Header = self.getHeader(src)
         dummybuffer = bytearray(os.stat(path)[6])
@@ -74,17 +74,26 @@ class gif():
     
     def blit(self,arr,callback,startPos,frameSize):
         scr_y = startPos[1]
+        count = 0
         for i,byte in enumerate(arr):
-            scr_x = i%frameSize[0] + startPos[0]
-            if scr_x == startPos[0] and i != 0:
-                 scr_y+= 1
             if self.monocrome:
-                callback(scr_x,scr_y,byte)
+                for bit_i in range(8):
+                    bit = (byte >> bit_i) & 1
+                    scr_x = count%frameSize[0] + startPos[0]
+                    if scr_x == startPos[0] and count != 0:
+                        scr_y+= 1
+                    callback(scr_x,scr_y,bit)
+                    count += 1
+
             else:
-                if useColor565:
-                    callback(scr_x,scr_y,self.ColorTable565[byte])
+                scr_x = i%frameSize[0] + startPos[0]
+                if scr_x == startPos[0] and i != 0:
+                     scr_y+= 1
                 else:
-                    callback(scr_x,scr_y,self.ColorTable[byte])
+                    if useColor565:
+                        callback(scr_x,scr_y,self.ColorTable565[byte])
+                    else:
+                        callback(scr_x,scr_y,self.ColorTable[byte])
 
     def lzw_DecodeToScreen(self,data,callback,startPos,frameSize,palBits,useColor565=True):
         # code from: https://github.com/qalle2/pygif/blob/main/gifdec.py
@@ -102,7 +111,9 @@ class gif():
         entry     = bytearray()       # reconstructed dictionary entry
         codeCount = 0                 # number of LZW codes read (statistics only)
         bitCount  = 0                 # number of LZW bits read (statistics only)
-        decoded_data   = bytearray()
+        decoded_data = bytearray()
+        outbyte = 0b00000000
+        bit_index = 0
         # LZW dictionary: index = code, value = entry (reference to another code,
         # final byte)
         lzwDict = [(None, i) for i in range(2 ** palBits + 2)]
@@ -167,6 +178,12 @@ class gif():
                          scr_y+= 1
                     if self.monocrome:
                         callback(scr_x,scr_y,byte)
+                        outbyte =  outbyte | (byte << bit_index)
+                        bit_index += 1
+                        if bit_index > 7:
+                            bit_index = 0 
+                            decoded_data.append(outbyte)
+                            outbyte = 0b00000000
                     else:
                         if useColor565:
                             callback(scr_x,scr_y,self.ColorTable565[byte])
@@ -179,12 +196,12 @@ class gif():
                     prevCode = code
                 if len(lzwDict) == 2 ** codeLen and codeLen < 12:
                     codeLen += 1
-                if self.useram:
+                if self.useram and not self.monocrome:
                     decoded_data += entry
 
             gc.collect()
         if (len(decoded_data)>0):
-            print(len(decoded_data))
+            #print(len(decoded_data))
             self.decoded.append(decoded_data)
             #print(f"LZW data: {codeCount} codes, {bitCount} bits, {imageDataLen} pixels")
     

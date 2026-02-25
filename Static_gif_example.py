@@ -46,4 +46,4 @@ def drawToScreen_PixelbyPixel(x,y,color):
 # drawToScreen_LinebyLine is faster
 display.fill(0)
 gif_obj = gif('jake.gif')
-gif_obj.BlitToScreen(0,drawToScreen_LinebyLine)
+gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine)
