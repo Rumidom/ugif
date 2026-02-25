@@ -42,7 +42,8 @@ while True:
     oled.show()
 ```
 
-https://github.com/user-attachments/assets/e2e9b2ae-ab09-48b1-af06-e1344f7aa19e
+
+https://github.com/user-attachments/assets/bd1c00c3-2735-452e-a132-a9631fec73a7
 
 
 # TODO
@@ -50,8 +51,8 @@ https://github.com/user-attachments/assets/e2e9b2ae-ab09-48b1-af06-e1344f7aa19e
 - [x] Add option to hold the decompressed image in memory
 - [x] Add animation support
 - [x] Use 1 bit per color to save ram on monocrome mode
-- [] Implement all disposal methods for compatibility
-- [] Optimize with native/viper decorators
+- [ ] Implement all disposal methods for compatibility
+- [ ] Optimize with native/viper decorators
   
 # LICENSE:
 this project is [MIT licensed](https://github.com/Rumidom/micropython_fontlib/blob/main/LICENSE)
