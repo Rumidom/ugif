@@ -29,7 +29,7 @@ while True:
 
 ## Displaying Animated Gif from ram
 If 'useram' is enabled ugif will load the gif file decompress it and save the decompressed frame data on the gif object,
-the decompression will happen once and after that the frames will be displayed from ram.
+the decompression will happen once and after the gif is loaded the frames will be displayed from ram.
 ```python
 def drawToScreen_PixelbyPixel(x,y,color):
     oled.pixel(x, y,color)
