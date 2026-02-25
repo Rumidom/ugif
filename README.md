@@ -14,7 +14,7 @@ gif_obj.BlitToScreen(0,drawToScreen_LinebyLine)
 ```
 
 ## Displaying Animated Gif from flash
-by default ugif will load the gif file decompress it and display every frame 
+By default ugif will load each frame from the gif file decompress it and display it to screen. The decompression will happend every time a frame is needed.
 ```python
 def drawToScreen_PixelbyPixel(x,y,color):
     oled.pixel(x, y,color)
@@ -28,7 +28,7 @@ while True:
 ```
 
 ## Displaying Animated Gif from ram
-if 'useram' is enabled ugif will load the gif file decompress it and save the decompressed frame data on the gif object,
+If 'useram' is enabled ugif will load the gif file decompress it and save the decompressed frame data on the gif object,
 the decompression will happen once and after that the frames will be displayed from ram.
 ```python
 def drawToScreen_PixelbyPixel(x,y,color):
@@ -50,6 +50,7 @@ https://github.com/user-attachments/assets/e2e9b2ae-ab09-48b1-af06-e1344f7aa19e
 - [x] Add option to hold the decompressed image in memory
 - [x] Add animation support
 - [x] Use 1 bit per color to save ram on monocrome mode
+- [] Implement all disposal methods for compatibility
 - [] Optimize with native/viper decorators
   
 # LICENSE:
