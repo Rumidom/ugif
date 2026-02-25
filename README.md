@@ -29,7 +29,7 @@ while True:
 
 ## Displaying Animated Gif from ram
 if 'useram' is enabled ugif will load the gif file decompress it and save the decompressed frame data on the gif object,
-the decompression will only happen once and after that the frames will be displayed from ram.
+the decompression will happen once and after that the frames will be displayed from ram.
 ```python
 def drawToScreen_PixelbyPixel(x,y,color):
     oled.pixel(x, y,color)
@@ -42,17 +42,16 @@ while True:
     oled.show()
 ```
 
-
-
-
+https://github.com/user-attachments/assets/e2e9b2ae-ab09-48b1-af06-e1344f7aa19e
 
 
 # TODO
 - [x] Add support for monocrome gifs
 - [x] Add option to hold the decompressed image in memory
 - [x] Add animation support
-- [ ] Use 1 bit per color to save ram on monocrome mode
-
+- [x] Use 1 bit per color to save ram on monocrome mode
+- [] Optimize with native/viper decorators
+  
 # LICENSE:
 this project is [MIT licensed](https://github.com/Rumidom/micropython_fontlib/blob/main/LICENSE)
 
