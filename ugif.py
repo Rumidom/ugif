@@ -198,8 +198,7 @@ class gif():
                         newEntry = bytearray(self.get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K])
                         #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
                     
-                    codeTable[newTableIndex] =  bytearray([lastCode,K])
-                    
+                    codeTable[newTableIndex] =  (lastCode,bytearray([K]))
                     if newTableIndex >= 2**CodeLen-1:
                         #print('TableIndex maxed out! ',newTableIndex)
                         #print('Increased to: ',2**(CodeLen+1)-1)
