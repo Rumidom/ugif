@@ -1,0 +1,99 @@
+    def get_CodeValue(self,Code,codeTable,ColorTableLen):
+        if Code < ColorTableLen:
+            return Code.to_bytes(1)
+        else:
+            return codeTable[Code]
+
+    def lzw_Decompress(self,src,LZW_Min_Code):
+        ColorTableLen = 2**LZW_Min_Code
+        #print('ColorTableLen:',ColorTableLen)
+        #print('LZW_Min_Code:',LZW_Min_Code)
+        ClearCode = ColorTableLen
+        ImgEndCode = ColorTableLen + 1
+        CodeLen = LZW_Min_Code+1
+        lastCode = 0
+        K = 0
+        Code = None
+        Codekey = None
+        indexStream = bytearray()
+        codeTable = {}
+        byte = 0
+        BitIndex = 0
+        newTableIndex = ImgEndCode + 1
+        ByteCount = 0
+        BlockN = 0
+        FirstCodeFlag = False
+        ZeroBlockLenFlag = False
+        while True:       
+            Code = bytearray(CodeLen//8+1)
+            #print('bc:',ByteCount,' ',end='')
+            #print('['+str(newTableIndex)+']',end="")
+            #print('('+str(CodeLen)+')',end="")
+            #print('|'+str(BitIndex)+'|',end="")
+            for i in range(CodeLen):   
+                if ByteCount == 0:
+                    ByteCount = src.read(1)[0]
+                    #print("BlockN: ",BlockN,"BlockLen: ",ByteCount)
+                    if ByteCount == 0:
+                        ZeroBlockLenFlag = True
+                        break
+                    BlockN += 1
+                                
+                if BitIndex == 0:
+                    byte = src.read(1)[0]
+                    ByteCount -= 1
+
+                bit = (byte >> BitIndex) & 1
+                #print(bit,end="")
+                if bit:
+                    Code[i//8] = Code[i//8] | 1<<i%8
+                BitIndex += 1
+                if BitIndex == 8:
+                    BitIndex = 0
+            if ZeroBlockLenFlag:
+                break
+            #print(' ',end="")
+            #binary_string = ''.join(f'{b:08b}' for b in bytearray([Code[-1]]))
+            #print(binary_string,' ',end="")
+            #binary_string = ''.join(f'{b:08b}' for b in bytearray([Code[0]]))
+            #print(binary_string,' ',end="")
+            
+            CodeKey = int.from_bytes(Code,'little')
+            #print(' ',end="")
+            #print(CodeKey,end="")
+            #print(' -> ',end="")
+
+            if CodeKey == ClearCode:
+                #print('Clear Code - Initializing codeTable')
+                codeTable = {}
+                newTableIndex = ImgEndCode+1
+                FirstCodeFlag = False
+                CodeLen = LZW_Min_Code+1         
+            elif CodeKey == ImgEndCode:
+                #print('Image End Code - Decoding Complete')
+                break
+            else:
+                if not FirstCodeFlag:
+                    #print('First Code - Appending to indexStream')
+                    indexStream += bytearray(self.get_CodeValue(CodeKey,codeTable,ColorTableLen))
+                    FirstCodeFlag = True
+                else:
+                    if ((CodeKey < ColorTableLen) or (CodeKey in codeTable)):
+                        indexStream += bytearray(self.get_CodeValue(CodeKey,codeTable,ColorTableLen))
+                        K = get_CodeValue(CodeKey,codeTable,ColorTableLen)[0]
+                        #print('Found adding -',bytearray(get_CodeValue(CodeKey,codeTable,ColorTableLen)))
+                    else:
+                        K = get_CodeValue(lastCode,codeTable,ColorTableLen)[0]
+                        indexStream += bytearray(self.get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K])
+                        #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
+
+                    codeTable[newTableIndex] = bytearray(self.get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K])
+                    if newTableIndex >= 2**CodeLen-1:
+                        #print('TableIndex maxed out! ',newTableIndex)
+                        #print('Increased to: ',2**(CodeLen+1)-1)
+                        if CodeLen < 12:
+                            CodeLen += 1
+                        
+                    newTableIndex += 1
+            lastCode = CodeKey
+        return indexStream
