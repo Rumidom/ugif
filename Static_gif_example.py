@@ -33,6 +33,7 @@ buffer_width = 240
 buffer_height = 1
 line_buffer = bytearray(screen_width*buffer_height*2)
 line_buffer = bytearray()
+
 def drawToScreen_LinebyLine(x,y,color):
     global line_buffer 
     line_buffer.extend(color.to_bytes(2,'big'))

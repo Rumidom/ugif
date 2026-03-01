@@ -19,7 +19,7 @@ fbuf.fill(0)
 def drawToScreen_PixelbyPixel(x,y,color):
     oled.pixel(x, y,color)
 
-gif_obj = gif('jake.gif',useram = True)
+gif_obj = gif('Steam_Boat_128x64.gif')
 gif_obj.setPosition(0,0)
 
 while True:

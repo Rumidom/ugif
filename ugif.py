@@ -94,8 +94,149 @@ class gif():
                         callback(scr_x,scr_y,self.ColorTable565[byte])
                     else:
                         callback(scr_x,scr_y,self.ColorTable[byte])
+                        
+    def get_CodeValue(self,Code,codeTable,ColorTableLen):
+        if Code < ColorTableLen:
+            return Code.to_bytes(1)
+        else:
+            tup = codeTable[Code]
+            output = self.get_CodeValue(tup[0],codeTable,ColorTableLen) + tup[1]
+            return output
 
-    def lzw_DecodeToScreen(self,data,callback,startPos,frameSize,palBits,useColor565=True):
+    def lzw_DecompressToScreen(self,src,callback,startPos,frameSize,LZW_Min_Code,useColor565=True,useram=False,monocrome=False):
+        
+        ColorTableLen = 2**LZW_Min_Code
+        #print('ColorTableLen:',ColorTableLen)
+        #print('LZW_Min_Code:',LZW_Min_Code)
+        ClearCode = ColorTableLen
+        ImgEndCode = ColorTableLen + 1
+        CodeLen = LZW_Min_Code+1
+        lastCode = 0
+        K = 0
+        Code = None
+        Codekey = None
+        indexStream = bytearray()
+        codeTable = bytearray()
+        byte = 0
+        BitIndex = 0
+        newTableIndex = ImgEndCode + 1
+        ByteCount = 0
+        BlockN = 0
+        FirstCodeFlag = False
+        ZeroBlockLenFlag = False
+        newentry = None
+        
+        ## Output to ram
+        outbit_index = 0
+        outbyte = 0b00000000
+        
+        ## Output to Screen
+        imageDataLen = 0
+        scr_x = startPos[0]
+        scr_y = startPos[1]
+        
+        while True:       
+            Code = bytearray(CodeLen//8+1)
+            #print('bc:',ByteCount,' ',end='')
+            #print('['+str(newTableIndex)+']',end="")
+            #print('('+str(CodeLen)+')',end="")
+            #print('|'+str(BitIndex)+'|',end="")
+            for i in range(CodeLen):   
+                if ByteCount == 0:
+                    ByteCount = src.read(1)[0]
+                    #print("BlockN: ",BlockN,"BlockLen: ",ByteCount)
+                    if ByteCount == 0:
+                        ZeroBlockLenFlag = True
+                        break
+                    BlockN += 1
+                                
+                if BitIndex == 0:
+                    byte = src.read(1)[0]
+                    ByteCount -= 1
+
+                bit = (byte >> BitIndex) & 1
+                #print(bit,end="")
+                if bit:
+                    Code[i//8] = Code[i//8] | 1<<i%8
+                BitIndex += 1
+                if BitIndex == 8:
+                    BitIndex = 0
+            if ZeroBlockLenFlag:
+                break
+            #print(' ',end="")
+            #binary_string = ''.join(f'{b:08b}' for b in bytearray([Code[-1]]))
+            #print(binary_string,' ',end="")
+            #binary_string = ''.join(f'{b:08b}' for b in bytearray([Code[0]]))
+            #print(binary_string,' ',end="")
+            
+            CodeKey = int.from_bytes(Code,'little')
+            #print(' ',end="")
+            #print(CodeKey,end="")
+            #print(' -> ',end="")
+            #print('')
+            if CodeKey == ClearCode:
+                #print('Clear Code - Initializing codeTable')
+                codeTable = {}
+                newTableIndex = ImgEndCode+1
+                FirstCodeFlag = False
+                CodeLen = LZW_Min_Code+1         
+            elif CodeKey == ImgEndCode:
+                #print('Image End Code - Decoding Complete')
+                break
+            else:
+                if not FirstCodeFlag:
+                    #print('First Code - Appending to indexStream')
+                    newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,ColorTableLen))
+                    FirstCodeFlag = True
+                else:
+                    if ((CodeKey < ColorTableLen) or (CodeKey in codeTable)):
+                        newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,ColorTableLen))
+                        K = self.get_CodeValue(CodeKey,codeTable,ColorTableLen)[0]
+                        #print('Found adding -',bytearray(get_CodeValue(CodeKey,codeTable,ColorTableLen)))
+                    else:
+                        K = self.get_CodeValue(lastCode,codeTable,ColorTableLen)[0]
+                        newEntry = bytearray(self.get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K])
+                        #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
+                    
+                    codeTable[newTableIndex] =  bytearray([lastCode,K])
+                    
+                    if newTableIndex >= 2**CodeLen-1:
+                        #print('TableIndex maxed out! ',newTableIndex)
+                        #print('Increased to: ',2**(CodeLen+1)-1)
+                        if CodeLen < 12:
+                            CodeLen += 1
+                        
+                    newTableIndex += 1
+                lastCode = CodeKey
+                for i,Entrybyte in enumerate(newEntry):
+                    count = i+imageDataLen
+                    scr_x = count%frameSize[0] + startPos[0]
+                    if scr_x == startPos[0] and count != 0:
+                         scr_y+= 1
+                    if monocrome:
+                        callback(scr_x,scr_y,Entrybyte)
+                        outbyte =  outbyte | (Entrybyte << outbit_index)
+                        outbit_index += 1
+                        if outbit_index > 7:
+                            outbit_index = 0 
+                            indexStream.append(outbyte)
+                            outbyte = 0b00000000
+                    else:
+                        if useColor565:
+                            callback(scr_x,scr_y,self.ColorTable565[Entrybyte])
+                        else:
+                            callback(scr_x,scr_y,self.ColorTable[Entrybyte])
+                
+                imageDataLen += len(newEntry)
+                
+                if useram and not monocrome:
+                    indexStream += newentry
+        gc.collect()
+        if (len(indexStream)>0):
+            #print(len(decoded_data))
+            self.decoded.append(indexStream)
+            
+    def lzw_DecodeToScreen(self,data,callback,startPos,frameSize,palBits,useColor565=True,useram=False,monocrome=False):
         # code from: https://github.com/qalle2/pygif/blob/main/gifdec.py
         # decode Lempel-Ziv-Welch (LZW) data (bytes)
         # palBits: palette bit depth in LZW encoding (2-8)
@@ -176,7 +317,7 @@ class gif():
                     scr_x = count%frameSize[0] + startPos[0]
                     if scr_x == startPos[0] and count != 0:
                          scr_y+= 1
-                    if self.monocrome:
+                    if monocrome:
                         callback(scr_x,scr_y,byte)
                         outbyte =  outbyte | (byte << bit_index)
                         bit_index += 1
@@ -196,7 +337,7 @@ class gif():
                     prevCode = code
                 if len(lzwDict) == 2 ** codeLen and codeLen < 12:
                     codeLen += 1
-                if self.useram and not self.monocrome:
+                if useram and not monocrome:
                     decoded_data += entry
 
             gc.collect()
@@ -319,8 +460,9 @@ class gif():
             src = open(self.path, "rb")
             src.seek(self.Frames[FrameIndex]['BytesToData'])
             frameLZW_min = src.read(1)[0]
-            frameCompData = self.ReadFrameData(src)
-            self.lzw_DecodeToScreen(frameCompData,callback,startPos,frameSize,frameLZW_min)
+            #frameCompData = self.ReadFrameData(src)
+            #self.lzw_DecodeToScreen(frameCompData,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
+            self.lzw_DecompressToScreen(src,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
             src.close()
         #print('frameData Ready')
         #print('start',startPos)
