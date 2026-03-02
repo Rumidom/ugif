@@ -2,7 +2,7 @@ import struct
 import gc
 import os
 import time
-#import micropython
+import micropython
 
 def ByteArrayReverse(Barr):
     l = list(Barr)
@@ -99,7 +99,7 @@ class gif():
         if Code < ColorTableLen:
             return Code.to_bytes(1)
         else:
-            tup = codeTable[Code]
+            tup = codeTable[Code-(ColorTableLen+2)]
             output = self.get_CodeValue(tup[0],codeTable,ColorTableLen) + tup[1]
             return output
 
@@ -116,7 +116,7 @@ class gif():
         Code = None
         Codekey = None
         indexStream = bytearray()
-        codeTable = bytearray()
+        codeTable = []
         byte = 0
         BitIndex = 0
         newTableIndex = ImgEndCode + 1
@@ -176,7 +176,7 @@ class gif():
             #print('')
             if CodeKey == ClearCode:
                 #print('Clear Code - Initializing codeTable')
-                codeTable = {}
+                codeTable = []
                 newTableIndex = ImgEndCode+1
                 FirstCodeFlag = False
                 CodeLen = LZW_Min_Code+1         
@@ -189,7 +189,7 @@ class gif():
                     newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,ColorTableLen))
                     FirstCodeFlag = True
                 else:
-                    if ((CodeKey < ColorTableLen) or (CodeKey in codeTable)):
+                    if (CodeKey < newTableIndex):
                         newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,ColorTableLen))
                         K = self.get_CodeValue(CodeKey,codeTable,ColorTableLen)[0]
                         #print('Found adding -',bytearray(get_CodeValue(CodeKey,codeTable,ColorTableLen)))
@@ -198,7 +198,14 @@ class gif():
                         newEntry = bytearray(self.get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K])
                         #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
                     
-                    codeTable[newTableIndex] =  (lastCode,bytearray([K]))
+                    try:
+                        #gc.collect()
+                        #codeTable[newTableIndex] = (lastCode,bytearray([K]))
+                        codeTable.append( (lastCode,bytearray([K])) )
+                    except Exception as e:
+                        print(micropython.mem_info())
+                        raise(e)
+                        
                     if newTableIndex >= 2**CodeLen-1:
                         #print('TableIndex maxed out! ',newTableIndex)
                         #print('Increased to: ',2**(CodeLen+1)-1)
@@ -230,7 +237,7 @@ class gif():
                 
                 if useram and not monocrome:
                     indexStream += newentry
-        gc.collect()
+            gc.collect()
         if (len(indexStream)>0):
             #print(len(decoded_data))
             self.decoded.append(indexStream)
