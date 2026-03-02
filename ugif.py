@@ -116,6 +116,8 @@ class gif():
         Code = None
         Codekey = None
         indexStream = bytearray()
+        datablock = bytearray(256)
+        datablockIndex = 0
         codeTable = []
         byte = 0
         BitIndex = 0
@@ -144,6 +146,8 @@ class gif():
             for i in range(CodeLen):   
                 if ByteCount == 0:
                     ByteCount = src.read(1)[0]
+                    datablock = src.read(ByteCount)
+                    datablockIndex = 0
                     #print("BlockN: ",BlockN,"BlockLen: ",ByteCount)
                     if ByteCount == 0:
                         ZeroBlockLenFlag = True
@@ -151,7 +155,8 @@ class gif():
                     BlockN += 1
                                 
                 if BitIndex == 0:
-                    byte = src.read(1)[0]
+                    byte = datablock[datablockIndex]
+                    datablockIndex += 1
                     ByteCount -= 1
 
                 bit = (byte >> BitIndex) & 1
@@ -232,7 +237,7 @@ class gif():
                             callback(scr_x,scr_y,self.ColorTable565[Entrybyte])
                         else:
                             callback(scr_x,scr_y,self.ColorTable[Entrybyte])
-                
+                    gc.collect()
                 imageDataLen += len(newEntry)
                 
                 if useram and not monocrome:
@@ -468,7 +473,11 @@ class gif():
             frameLZW_min = src.read(1)[0]
             #frameCompData = self.ReadFrameData(src)
             #self.lzw_DecodeToScreen(frameCompData,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
-            self.lzw_DecompressToScreen(src,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
+            try:
+                self.lzw_DecompressToScreen(src,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
+            except Exception as e:
+                print(micropython.mem_info())
+                raise(e)
             src.close()
         #print('frameData Ready')
         #print('start',startPos)
