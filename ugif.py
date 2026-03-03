@@ -467,7 +467,7 @@ class gif():
         #print('FrameDict: ',self.Frames[-1])
         #print('FreeMem:',gc.mem_free())
     
-    def BlitFrameToScreen(self,FrameIndex,callback,testFlag):
+    def BlitFrameToScreen(self,FrameIndex,callback,testFlag=False):
         startTime = time.time()
         frame_x = self.Frames[FrameIndex]['img'][0]
         frame_y = self.Frames[FrameIndex]['img'][1]
