@@ -4,6 +4,7 @@ import framebuf
 from machine import Pin, SPI
 from ugif import gif
 import micropython
+import time
 
 # set landscape screen
 screen_width = 240
@@ -47,4 +48,21 @@ def drawToScreen_PixelbyPixel(x,y,color):
 # drawToScreen_LinebyLine is faster
 display.fill(0)
 gif_obj = gif('jake.gif')
-gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine)
+print('-Test Start-')
+#print('')
+#print('func: lzw_DecodeToScreen')
+#print(micropython.mem_info())
+#initTime = time.ticks_ms()
+#gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine,False)
+#print('Completed')
+#print(micropython.mem_info())
+#print('Time To Complete: ',time.ticks_diff(time.ticks_ms() , initTime),' ms')
+#print('')
+
+print('func: lzw_DecompressToScreen')
+print(micropython.mem_info())
+initTime = time.ticks_ms()
+gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine,True)
+print('Completed')
+print(micropython.mem_info())
+print('Time To Complete: ',time.ticks_diff(time.ticks_ms() , initTime),' ms')

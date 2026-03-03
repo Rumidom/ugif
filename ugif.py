@@ -63,7 +63,8 @@ class gif():
             print("Size: ",self.Width,",",self.Height)
             print("Loop count: ",self.loopcount)
             print("Frames: ",self.n_frames)
-    
+        src.close()
+        
     def setPosition(self,x,y):
         self.x = x
         self.y = y
@@ -99,13 +100,21 @@ class gif():
         if Code < ColorTableLen:
             return Code.to_bytes(1)
         else:
-            tup = codeTable[Code-(ColorTableLen+2)]
-            output = self.get_CodeValue(tup[0],codeTable,ColorTableLen) + tup[1]
-            return output
+            newCode = Code
+            outList = []
+            output = b''
+            while newCode > ColorTableLen:
+                tup = codeTable[newCode-(ColorTableLen+2)]
+                outList.append(tup[1])
+                newCode = tup[0]
+            outList.append(newCode)
+            outList = outList[::-1]
+            return bytearray(outList)
 
     def lzw_DecompressToScreen(self,src,callback,startPos,frameSize,LZW_Min_Code,useColor565=True,useram=False,monocrome=False):
-        
+        ## LZW algorithm ram
         ColorTableLen = 2**LZW_Min_Code
+        #print('Starting Decompression')
         #print('ColorTableLen:',ColorTableLen)
         #print('LZW_Min_Code:',LZW_Min_Code)
         ClearCode = ColorTableLen
@@ -206,7 +215,7 @@ class gif():
                     try:
                         #gc.collect()
                         #codeTable[newTableIndex] = (lastCode,bytearray([K]))
-                        codeTable.append( (lastCode,bytearray([K])) )
+                        codeTable.append((lastCode,K))
                     except Exception as e:
                         print(micropython.mem_info())
                         raise(e)
@@ -458,7 +467,7 @@ class gif():
         #print('FrameDict: ',self.Frames[-1])
         #print('FreeMem:',gc.mem_free())
     
-    def BlitFrameToScreen(self,FrameIndex,callback):
+    def BlitFrameToScreen(self,FrameIndex,callback,testFlag):
         startTime = time.time()
         frame_x = self.Frames[FrameIndex]['img'][0]
         frame_y = self.Frames[FrameIndex]['img'][1]
@@ -473,11 +482,11 @@ class gif():
             frameLZW_min = src.read(1)[0]
             #frameCompData = self.ReadFrameData(src)
             #self.lzw_DecodeToScreen(frameCompData,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
-            try:
+            if testFlag:
                 self.lzw_DecompressToScreen(src,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
-            except Exception as e:
-                print(micropython.mem_info())
-                raise(e)
+            else:
+                frameCompData = self.ReadFrameData(src)
+                self.lzw_DecodeToScreen(frameCompData,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
             src.close()
         #print('frameData Ready')
         #print('start',startPos)
