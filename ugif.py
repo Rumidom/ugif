@@ -204,12 +204,14 @@ class gif():
                     FirstCodeFlag = True
                 else:
                     if (CodeKey < newTableIndex):
-                        newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,ColorTableLen))
+                        codearr = self.get_CodeValue(CodeKey,codeTable,ColorTableLen)
+                        newEntry = bytearray(codearr)
                         K = self.get_CodeValue(CodeKey,codeTable,ColorTableLen)[0]
                         #print('Found adding -',bytearray(get_CodeValue(CodeKey,codeTable,ColorTableLen)))
                     else:
-                        K = self.get_CodeValue(lastCode,codeTable,ColorTableLen)[0]
-                        newEntry = bytearray(self.get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K])
+                        lastcodearr = self.get_CodeValue(lastCode,codeTable,ColorTableLen)
+                        K = lastcodearr[0]
+                        newEntry = bytearray(lastcodearr) + bytearray([K])
                         #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
                     
                     try:
@@ -467,7 +469,7 @@ class gif():
         #print('FrameDict: ',self.Frames[-1])
         #print('FreeMem:',gc.mem_free())
     
-    def BlitFrameToScreen(self,FrameIndex,callback,testFlag=False):
+    def BlitFrameToScreen(self,FrameIndex,callback,testFlag):
         startTime = time.time()
         frame_x = self.Frames[FrameIndex]['img'][0]
         frame_y = self.Frames[FrameIndex]['img'][1]

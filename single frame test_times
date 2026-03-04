@@ -1,0 +1,4 @@
+jake.gif
+lzw_DecodeToScreen - 327440 ms
+lzw_DecompressToScreen - 668060 ms
+lzw_DecompressToScreen (reducing get_codevalues calls) - 667710 ms
