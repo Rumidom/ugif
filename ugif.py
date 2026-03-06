@@ -375,11 +375,11 @@ class gif():
             #print(len(decoded_data))
             self.decoded.append(decoded_data)
             #print(f"LZW data: {codeCount} codes, {bitCount} bits, {imageDataLen} pixels")
-    
+    @micropython.native
     def getColorTable(self,src,ColorTableLen):
         for i in range(ColorTableLen):
             self.ColorTable.append((src.read(1)[0],src.read(1)[0],src.read(1)[0]))
-    
+    @micropython.native
     def getHeader(self,src):
         ID_tag = src.read(3)
         Version = src.read(3)
@@ -391,7 +391,7 @@ class gif():
         Header = ID_tag,Version,Width,Height,Field,Background_ci,Pixel_AR
         #print(Header)
         return Header
-    
+    @micropython.native
     def ReadSubBlocks(self,src):
         subBlocksList = []
         while True:
@@ -401,7 +401,7 @@ class gif():
             subBlockData = src.read(subBlockLenght)
             subBlocksList.append(subBlockData)
         return subBlocksList    
-    
+    @micropython.native
     def ReadFrameData(self,src):
         gc.collect()
         frameData = bytearray()
@@ -412,14 +412,14 @@ class gif():
             subBlockData = src.read(subBlockLenght)
             frameData.extend(subBlockData)
         return frameData
-    
+    @micropython.native
     def ReadBlock(self,src):
         Block_Dict = {'SubBlocks':[]}
         BlockLenght = src.read(1)[0]
         Block_Dict['BlockData'] = src.read(BlockLenght)
         Block_Dict['SubBlocks'] = self.ReadSubBlocks(src)
         return Block_Dict
-        
+    @micropython.native
     def ReadGraphicsControlBlock(self,src):
         #print('GraphicsControlBlock')
         blockDict = self.ReadBlock(src)
@@ -434,21 +434,21 @@ class gif():
         AnimData = {'anim':[dispMethod,TranspFlag,delay]}
         self.Frames.append(AnimData)
         #disposalMethod = 2**((self.Field & 0b111)+1)
-        
+    @micropython.native
     def ReadApplicationBlock(self,src):
         #print('ApplicationBlock')
         blockdict = self.ReadBlock(src)
         if blockdict['BlockData'] == b'NETSCAPE2.0':
             self.loopcount = int.from_bytes(blockdict['SubBlocks'][0][1:], 'little')
-    
+    @micropython.native
     def ReadPlainTextBlock(self,src):
         #print('PlainTextBlock')
         self.ReadBlock(src)
-        
+    @micropython.native        
     def ReadCommentBlock(self,src):
         #print('CommentBlock')
         self.ReadBlock(src)
-    
+    @micropython.native
     def ReadFrame(self,src):
         #print('Frame')
         #print('FreeMem:',gc.mem_free())
@@ -476,7 +476,7 @@ class gif():
         self.n_frames += 1
         #print('FrameDict: ',self.Frames[-1])
         #print('FreeMem:',gc.mem_free())
-    
+    @micropython.native
     def BlitFrameToScreen(self,FrameIndex,callback,testFlag):
         startTime = time.time()
         frame_x = self.Frames[FrameIndex]['img'][0]
@@ -501,7 +501,7 @@ class gif():
         #print('frameData Ready')
         #print('start',startPos)
         #print("imageBlited, Time: ",time.time()-startTime)
-    
+    @micropython.native
     def BlitAnimationToScreen(self,callback):
         self.BlitFrameToScreen(self.currentFrameIndex,callback)        
         if (time.ticks_ms()-self.AnimTime)//self.Frames[self.currentFrameIndex]['anim'][2] > 0:
@@ -509,7 +509,7 @@ class gif():
             self.currentFrameIndex += 1
             if self.currentFrameIndex > self.n_frames-1:
                 self.currentFrameIndex = 0
-                
+    @micropython.native
     def getData(self,src):
         Supported_Extensions = {
         b'\xf9': self.ReadGraphicsControlBlock,        

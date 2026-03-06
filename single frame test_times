@@ -3,4 +3,4 @@ lzw_DecodeToScreen - 327440 ms
 lzw_DecompressToScreen - 668060 ms
 lzw_DecompressToScreen (reducing get_codevalues calls) - 667710 ms
 lzw_DecompressToScreen (native decorators) - 655840 ms
-lzw_DecompressToScreen (spliting TableCode into shotarray and byterray) - 491910 ms
+lzw_DecompressToScreen (spliting CodeTable into shortarray and byterray) - 491910 ms
