@@ -3,6 +3,7 @@ import gc
 import os
 import time
 import micropython
+from array import array
 
 def ByteArrayReverse(Barr):
     l = list(Barr)
@@ -73,6 +74,7 @@ class gif():
         for color in self.ColorTable:
             self.ColorTable565.append(color565(color[0],color[1],color[2]))
     
+    @micropython.native
     def blit(self,arr,callback,startPos,frameSize):
         scr_y = startPos[1]
         count = 0
@@ -95,8 +97,9 @@ class gif():
                         callback(scr_x,scr_y,self.ColorTable565[byte])
                     else:
                         callback(scr_x,scr_y,self.ColorTable[byte])
-                        
-    def get_CodeValue(self,Code,codeTable,ColorTableLen):
+    
+    @micropython.native
+    def get_CodeValue(self,Code:int,codeTable,byteTable,ColorTableLen:int):
         if Code < ColorTableLen:
             return Code.to_bytes(1)
         else:
@@ -104,13 +107,15 @@ class gif():
             outList = []
             output = b''
             while newCode > ColorTableLen:
-                tup = codeTable[newCode-(ColorTableLen+2)]
-                outList.append(tup[1])
-                newCode = tup[0]
+                index = newCode-(ColorTableLen+2)
+                newCode = codeTable[index]
+                outList.append(byteTable[index])
+
             outList.append(newCode)
             outList = outList[::-1]
             return bytearray(outList)
-
+        
+    @micropython.native
     def lzw_DecompressToScreen(self,src,callback,startPos,frameSize,LZW_Min_Code,useColor565=True,useram=False,monocrome=False):
         ## LZW algorithm ram
         ColorTableLen = 2**LZW_Min_Code
@@ -127,7 +132,8 @@ class gif():
         indexStream = bytearray()
         datablock = bytearray(256)
         datablockIndex = 0
-        codeTable = []
+        codeTable = array('i',[])
+        byteTable = bytearray()
         byte = 0
         BitIndex = 0
         newTableIndex = ImgEndCode + 1
@@ -190,7 +196,8 @@ class gif():
             #print('')
             if CodeKey == ClearCode:
                 #print('Clear Code - Initializing codeTable')
-                codeTable = []
+                codeTable = array('i',[])
+                byteTable = bytearray()
                 newTableIndex = ImgEndCode+1
                 FirstCodeFlag = False
                 CodeLen = LZW_Min_Code+1         
@@ -200,16 +207,16 @@ class gif():
             else:
                 if not FirstCodeFlag:
                     #print('First Code - Appending to indexStream')
-                    newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,ColorTableLen))
+                    newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen))
                     FirstCodeFlag = True
                 else:
                     if (CodeKey < newTableIndex):
-                        codearr = self.get_CodeValue(CodeKey,codeTable,ColorTableLen)
+                        codearr = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)
                         newEntry = bytearray(codearr)
-                        K = self.get_CodeValue(CodeKey,codeTable,ColorTableLen)[0]
+                        K = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)[0]
                         #print('Found adding -',bytearray(get_CodeValue(CodeKey,codeTable,ColorTableLen)))
                     else:
-                        lastcodearr = self.get_CodeValue(lastCode,codeTable,ColorTableLen)
+                        lastcodearr = self.get_CodeValue(lastCode,codeTable,byteTable,ColorTableLen)
                         K = lastcodearr[0]
                         newEntry = bytearray(lastcodearr) + bytearray([K])
                         #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
@@ -217,7 +224,8 @@ class gif():
                     try:
                         #gc.collect()
                         #codeTable[newTableIndex] = (lastCode,bytearray([K]))
-                        codeTable.append((lastCode,K))
+                        codeTable.append(lastCode)
+                        byteTable.append(K)
                     except Exception as e:
                         print(micropython.mem_info())
                         raise(e)
