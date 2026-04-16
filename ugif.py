@@ -98,22 +98,31 @@ class gif():
                     else:
                         callback(scr_x,scr_y,self.ColorTable[byte])
     
+
     @micropython.native
-    def get_CodeValue(self,Code:int,codeTable,byteTable,ColorTableLen:int):
+    def get_CodeValue(self,Code,codeTable,byteTable,Codedict,ColorTableLen):
         if Code < ColorTableLen:
             return Code.to_bytes(1)
         else:
-            newCode = Code
+            nextCode = Code
             outList = []
-            output = b''
-            while newCode > ColorTableLen:
-                index = newCode-(ColorTableLen+2)
-                newCode = codeTable[index]
+            extended = ''
+            dictFlag = False
+            while nextCode > ColorTableLen:
+                if nextCode in Codedict:
+                    dictFlag = True
+                    break
+                index = nextCode-(ColorTableLen+2)
+                nextCode = codeTable[index]
                 outList.append(byteTable[index])
-
-            outList.append(newCode)
+                if nextCode <= ColorTableLen:
+                    outList.append(nextCode)
+            
             outList = outList[::-1]
-            return bytearray(outList)
+            if dictFlag:
+                return Codedict[nextCode] + bytearray(outList) 
+            else:
+                return bytearray(outList)
         
     @micropython.native
     def lzw_DecompressToScreen(self,src,callback,startPos,frameSize,LZW_Min_Code,useColor565=True,useram=False,monocrome=False):
@@ -134,6 +143,7 @@ class gif():
         datablockIndex = 0
         codeTable = array('i',[])
         byteTable = bytearray()
+        Codedict = {} 
         byte = 0
         BitIndex = 0
         newTableIndex = ImgEndCode + 1
@@ -164,9 +174,6 @@ class gif():
                     datablock = src.read(ByteCount)
                     datablockIndex = 0
                     #print("BlockN: ",BlockN,"BlockLen: ",ByteCount)
-                    if ByteCount == 0:
-                        ZeroBlockLenFlag = True
-                        break
                     BlockN += 1
                                 
                 if BitIndex == 0:
@@ -181,8 +188,7 @@ class gif():
                 BitIndex += 1
                 if BitIndex == 8:
                     BitIndex = 0
-            if ZeroBlockLenFlag:
-                break
+
             #print(' ',end="")
             #binary_string = ''.join(f'{b:08b}' for b in bytearray([Code[-1]]))
             #print(binary_string,' ',end="")
@@ -198,6 +204,7 @@ class gif():
                 #print('Clear Code - Initializing codeTable')
                 codeTable = array('i',[])
                 byteTable = bytearray()
+                Codedict = {}
                 newTableIndex = ImgEndCode+1
                 FirstCodeFlag = False
                 CodeLen = LZW_Min_Code+1         
@@ -207,18 +214,20 @@ class gif():
             else:
                 if not FirstCodeFlag:
                     #print('First Code - Appending to indexStream')
-                    newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen))
+                    newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,byteTable,Codedict,ColorTableLen))
                     FirstCodeFlag = True
                 else:
                     if (CodeKey < newTableIndex):
-                        codearr = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)
-                        newEntry = bytearray(codearr)
-                        K = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)[0]
+                        codearr = self.get_CodeValue(CodeKey,codeTable,byteTable,Codedict,ColorTableLen)
+                        if len(codearr) >= 3 and len(codearr) <= 6:
+                            Codedict[CodeKey] = codearr
+                        newEntry = codearr
+                        K = codearr[0]
                         #print('Found adding -',bytearray(get_CodeValue(CodeKey,codeTable,ColorTableLen)))
                     else:
-                        lastcodearr = self.get_CodeValue(lastCode,codeTable,byteTable,ColorTableLen)
+                        lastcodearr = self.get_CodeValue(lastCode,codeTable,byteTable,Codedict,ColorTableLen)
                         K = lastcodearr[0]
-                        newEntry = bytearray(lastcodearr) + bytearray([K])
+                        newEntry = lastcodearr + bytearray([K])
                         #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
                     
                     try:
@@ -258,7 +267,6 @@ class gif():
                             callback(scr_x,scr_y,self.ColorTable[Entrybyte])
                     gc.collect()
                 imageDataLen += len(newEntry)
-                
                 if useram and not monocrome:
                     indexStream += newentry
             gc.collect()
@@ -375,10 +383,12 @@ class gif():
             #print(len(decoded_data))
             self.decoded.append(decoded_data)
             #print(f"LZW data: {codeCount} codes, {bitCount} bits, {imageDataLen} pixels")
+    
     @micropython.native
     def getColorTable(self,src,ColorTableLen):
         for i in range(ColorTableLen):
             self.ColorTable.append((src.read(1)[0],src.read(1)[0],src.read(1)[0]))
+    
     @micropython.native
     def getHeader(self,src):
         ID_tag = src.read(3)
@@ -476,8 +486,9 @@ class gif():
         self.n_frames += 1
         #print('FrameDict: ',self.Frames[-1])
         #print('FreeMem:',gc.mem_free())
+        
     @micropython.native
-    def BlitFrameToScreen(self,FrameIndex,callback,testFlag):
+    def BlitFrameToScreen(self,FrameIndex,callback,testFlag = False):
         startTime = time.time()
         frame_x = self.Frames[FrameIndex]['img'][0]
         frame_y = self.Frames[FrameIndex]['img'][1]
@@ -509,6 +520,7 @@ class gif():
             self.currentFrameIndex += 1
             if self.currentFrameIndex > self.n_frames-1:
                 self.currentFrameIndex = 0
+                
     @micropython.native
     def getData(self,src):
         Supported_Extensions = {
