@@ -100,29 +100,20 @@ class gif():
     
 
     @micropython.native
-    def get_CodeValue(self,Code,codeTable,byteTable,Codedict,ColorTableLen):
+    def get_CodeValue(self,Code,codeTable,byteTable,ColorTableLen):
         if Code < ColorTableLen:
             return Code.to_bytes(1)
         else:
             nextCode = Code
             outList = []
             extended = ''
-            dictFlag = False
             while nextCode > ColorTableLen:
-                if nextCode in Codedict:
-                    dictFlag = True
-                    break
                 index = nextCode-(ColorTableLen+2)
                 nextCode = codeTable[index]
                 outList.append(byteTable[index])
-                if nextCode <= ColorTableLen:
-                    outList.append(nextCode)
-            
+            outList.append(nextCode)
             outList = outList[::-1]
-            if dictFlag:
-                return Codedict[nextCode] + bytearray(outList) 
-            else:
-                return bytearray(outList)
+            return bytearray(outList)
         
     @micropython.native
     def lzw_DecompressToScreen(self,src,callback,startPos,frameSize,LZW_Min_Code,useColor565=True,useram=False,monocrome=False):
@@ -143,7 +134,6 @@ class gif():
         datablockIndex = 0
         codeTable = array('i',[])
         byteTable = bytearray()
-        Codedict = {} 
         byte = 0
         BitIndex = 0
         newTableIndex = ImgEndCode + 1
@@ -214,18 +204,16 @@ class gif():
             else:
                 if not FirstCodeFlag:
                     #print('First Code - Appending to indexStream')
-                    newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,byteTable,Codedict,ColorTableLen))
+                    newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen))
                     FirstCodeFlag = True
                 else:
                     if (CodeKey < newTableIndex):
-                        codearr = self.get_CodeValue(CodeKey,codeTable,byteTable,Codedict,ColorTableLen)
-                        if len(codearr) >= 3 and len(codearr) <= 6:
-                            Codedict[CodeKey] = codearr
+                        codearr = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)
                         newEntry = codearr
                         K = codearr[0]
                         #print('Found adding -',bytearray(get_CodeValue(CodeKey,codeTable,ColorTableLen)))
                     else:
-                        lastcodearr = self.get_CodeValue(lastCode,codeTable,byteTable,Codedict,ColorTableLen)
+                        lastcodearr = self.get_CodeValue(lastCode,codeTable,byteTable,ColorTableLen)
                         K = lastcodearr[0]
                         newEntry = lastcodearr + bytearray([K])
                         #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
