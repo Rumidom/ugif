@@ -155,17 +155,12 @@ class gif():
         scr_y = startPos[1]
         
         while True:       
-            Code = bytearray(CodeLen//8+1)
-            #print('bc:',ByteCount,' ',end='')
-            #print('['+str(newTableIndex)+']',end="")
-            #print('('+str(CodeLen)+')',end="")
-            #print('|'+str(BitIndex)+'|',end="")
+            CodeKey = 0
             for i in range(CodeLen):   
                 if ByteCount == 0:
                     ByteCount = src.read(1)[0]
                     datablock = src.read(ByteCount)
                     datablockIndex = 0
-                    #print("BlockN: ",BlockN,"BlockLen: ",ByteCount)
                     BlockN += 1
                                 
                 if BitIndex == 0:
@@ -174,55 +169,34 @@ class gif():
                     ByteCount -= 1
 
                 bit = (byte >> BitIndex) & 1
-                #print(bit,end="")
                 if bit:
-                    Code[i//8] = Code[i//8] | 1<<i%8
+                    CodeKey = CodeKey | 1<<i
                 BitIndex += 1
                 if BitIndex == 8:
                     BitIndex = 0
 
-            #print(' ',end="")
-            #binary_string = ''.join(f'{b:08b}' for b in bytearray([Code[-1]]))
-            #print(binary_string,' ',end="")
-            #binary_string = ''.join(f'{b:08b}' for b in bytearray([Code[0]]))
-            #print(binary_string,' ',end="")
-            
-            CodeKey = int.from_bytes(Code,'little')
-            #print(' ',end="")
-            #print(CodeKey,end="")
-            #print(' -> ',end="")
-            #print('')
             if CodeKey == ClearCode:
-                #print('Clear Code - Initializing codeTable')
                 codeTable = array('i',[])
                 byteTable = bytearray()
-                Codedict = {}
                 newTableIndex = ImgEndCode+1
                 FirstCodeFlag = False
                 CodeLen = LZW_Min_Code+1         
             elif CodeKey == ImgEndCode:
-                #print('Image End Code - Decoding Complete')
                 break
             else:
                 if not FirstCodeFlag:
-                    #print('First Code - Appending to indexStream')
-                    newEntry = bytearray(self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen))
+                    newEntry = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)
                     FirstCodeFlag = True
                 else:
                     if (CodeKey < newTableIndex):
                         codearr = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)
                         newEntry = codearr
                         K = codearr[0]
-                        #print('Found adding -',bytearray(get_CodeValue(CodeKey,codeTable,ColorTableLen)))
                     else:
                         lastcodearr = self.get_CodeValue(lastCode,codeTable,byteTable,ColorTableLen)
                         K = lastcodearr[0]
-                        newEntry = lastcodearr + bytearray([K])
-                        #print('Not Found adding -',bytearray(get_CodeValue(lastCode,codeTable,ColorTableLen)) + bytearray([K]))
-                    
+                        newEntry = lastcodearr + bytearray([K])                    
                     try:
-                        #gc.collect()
-                        #codeTable[newTableIndex] = (lastCode,bytearray([K]))
                         codeTable.append(lastCode)
                         byteTable.append(K)
                     except Exception as e:
@@ -230,8 +204,6 @@ class gif():
                         raise(e)
                         
                     if newTableIndex >= 2**CodeLen-1:
-                        #print('TableIndex maxed out! ',newTableIndex)
-                        #print('Increased to: ',2**(CodeLen+1)-1)
                         if CodeLen < 12:
                             CodeLen += 1
                         
@@ -261,7 +233,6 @@ class gif():
                     indexStream += newentry
             gc.collect()
         if (len(indexStream)>0):
-            #print(len(decoded_data))
             self.decoded.append(indexStream)
             
     def lzw_DecodeToScreen(self,data,callback,startPos,frameSize,palBits,useColor565=True,useram=False,monocrome=False):
