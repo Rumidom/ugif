@@ -168,8 +168,7 @@ class gif():
                     datablockIndex += 1
                     ByteCount -= 1
 
-                bit = (byte >> BitIndex) & 1
-                if bit:
+                if (byte >> BitIndex) & 1:
                     CodeKey = CodeKey | 1<<i
                 BitIndex += 1
                 if BitIndex == 8:
@@ -216,12 +215,13 @@ class gif():
                          scr_y+= 1
                     if monocrome:
                         callback(scr_x,scr_y,Entrybyte)
-                        outbyte =  outbyte | (Entrybyte << outbit_index)
-                        outbit_index += 1
-                        if outbit_index > 7:
-                            outbit_index = 0 
-                            indexStream.append(outbyte)
-                            outbyte = 0b00000000
+                        if useram:
+                            outbyte =  outbyte | (Entrybyte << outbit_index)
+                            outbit_index += 1
+                            if outbit_index > 7:
+                                outbit_index = 0 
+                                indexStream.append(outbyte)
+                                outbyte = 0b00000000
                     else:
                         if useColor565:
                             callback(scr_x,scr_y,self.ColorTable565[Entrybyte])
