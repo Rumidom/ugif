@@ -5,10 +5,10 @@ import time
 import micropython
 from array import array
 
-def ByteArrayReverse(Barr):
-    l = list(Barr)
-    l = l[::-1]
-    return bytearray(l)
+@micropython.viper
+def ByteArrayReverse(Barr:ptr8,BarrOut:ptr8,l:int):
+    for x in range(l):
+        BarrOut[x] = Barr[l-1-x]
 
 def color565(red, green=0, blue=0):
     """
@@ -105,15 +105,17 @@ class gif():
             return Code.to_bytes(1)
         else:
             nextCode = Code
-            outList = []
+            Barr = bytearray()
             extended = ''
             while nextCode > ColorTableLen:
                 index = nextCode-(ColorTableLen+2)
                 nextCode = codeTable[index]
-                outList.append(byteTable[index])
-            outList.append(nextCode)
-            outList = outList[::-1]
-            return bytearray(outList)
+                Barr.append(byteTable[index])
+            Barr.append(nextCode)
+            Barr_len = len(Barr)
+            BarrOut = bytearray(Barr_len)
+            ByteArrayReverse(Barr,BarrOut,Barr_len)
+            return BarrOut
         
     @micropython.native
     def lzw_DecompressToScreen(self,src,callback,startPos,frameSize,LZW_Min_Code,useColor565=True,useram=False,monocrome=False):
