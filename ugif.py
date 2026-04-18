@@ -11,10 +11,16 @@ def ByteArrayReverse(Barr:ptr8,BarrOut:ptr8,l:int):
         BarrOut[x] = Barr[l-1-x]
 
 @micropython.viper
-def Set_IntBit(Var:int,mask:int,maskindex:int,Varindex:int)->int:
-    if mask >> maskindex & 1:
-        Var = Var | 1<<Varindex
-    return Var
+def Get_ByteArrCode(Barr:ptr8,Code:int,byteTable:ptr8,codeTable:ptr32,ColorTableLen:int)->int:
+    nextCode:int = Code
+    byteCount:int = 0
+    while nextCode > ColorTableLen:
+        index = nextCode-(ColorTableLen+2)
+        nextCode = codeTable[index]
+        Barr[byteCount] = byteTable[index]
+        byteCount += 1
+    Barr[byteCount] = nextCode
+    return byteCount+1
 
 def color565(red, green=0, blue=0):
     """
@@ -110,15 +116,9 @@ class gif():
         if Code < ColorTableLen:
             return Code.to_bytes(1)
         else:
-            nextCode = Code
-            Barr = bytearray()
-            extended = ''
-            while nextCode > ColorTableLen:
-                index = nextCode-(ColorTableLen+2)
-                nextCode = codeTable[index]
-                Barr.append(byteTable[index])
-            Barr.append(nextCode)
-            Barr_len = len(Barr)
+
+            Barr = bytearray(4095)
+            Barr_len = Get_ByteArrCode(Barr,Code,byteTable,codeTable,ColorTableLen)
             BarrOut = bytearray(Barr_len)
             ByteArrayReverse(Barr,BarrOut,Barr_len)
             return BarrOut
