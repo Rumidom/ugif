@@ -10,6 +10,12 @@ def ByteArrayReverse(Barr:ptr8,BarrOut:ptr8,l:int):
     for x in range(l):
         BarrOut[x] = Barr[l-1-x]
 
+@micropython.viper
+def Set_IntBit(Var:int,mask:int,maskindex:int,Varindex:int)->int:
+    if mask >> maskindex & 1:
+        Var = Var | 1<<Varindex
+    return Var
+
 def color565(red, green=0, blue=0):
     """
     Convert red, green and blue values (0-255) into a 16-bit 565 encoding.
