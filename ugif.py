@@ -10,19 +10,6 @@ def ByteArrayReverse(Barr:ptr8,BarrOut:ptr8,l:int):
     for x in range(l):
         BarrOut[x] = Barr[l-1-x]
 
-@micropython.viper
-def Get_ByteArrCode(Code:int,byteTable:ptr8,codeTable:ptr32,ColorTableLen:int):
-    nextCode:int = Code
-    byteCount:int = 0
-    Barr = bytearray()
-    while nextCode > ColorTableLen:
-        index = nextCode-(ColorTableLen+2)
-        nextCode = codeTable[index]
-        Barr.append(byteTable[index])
-        byteCount += 1
-    Barr.append(nextCode)
-    return Barr
-
 def color565(red, green=0, blue=0):
     """
     Convert red, green and blue values (0-255) into a 16-bit 565 encoding.
@@ -117,7 +104,13 @@ class gif():
         if Code < ColorTableLen:
             return Code.to_bytes(1)
         else:
-            Barr = Get_ByteArrCode(Code,byteTable,codeTable,ColorTableLen)
+            nextCode = Code
+            Barr = bytearray()
+            while nextCode > ColorTableLen:
+                index = nextCode-(ColorTableLen+2)
+                nextCode = codeTable[index]
+                Barr.append(byteTable[index])
+            Barr.append(nextCode)
             Barr_len = len(Barr)
             BarrOut = bytearray(Barr_len)
             ByteArrayReverse(Barr,BarrOut,Barr_len)
