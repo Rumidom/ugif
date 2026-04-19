@@ -13,3 +13,4 @@ jake.gif
 [ESP32 - S3] lzw_DecompressToScreen (setting bits directly on CodeKey int ) - 411710  ms
 [ESP32 - S3] lzw_DecompressToScreen (removing bit variable) - 411510  ms
 [ESP32 - S3] lzw_DecompressToScreen (using Set_IntBit with viper decorator) - 414510  ms
+[ESP32 - S3] lzw_DecompressToScreen (removing Nblock variable) - 356989

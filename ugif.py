@@ -115,14 +115,11 @@ class gif():
             BarrOut = bytearray(Barr_len)
             ByteArrayReverse(Barr,BarrOut,Barr_len)
             return BarrOut
-        
+    
     @micropython.native
     def lzw_DecompressToScreen(self,src,callback,startPos,frameSize,LZW_Min_Code,useColor565=True,useram=False,monocrome=False):
-        ## LZW algorithm ram
+        ## LZW algorithm
         ColorTableLen = 2**LZW_Min_Code
-        #print('Starting Decompression')
-        #print('ColorTableLen:',ColorTableLen)
-        #print('LZW_Min_Code:',LZW_Min_Code)
         ClearCode = ColorTableLen
         ImgEndCode = ColorTableLen + 1
         CodeLen = LZW_Min_Code+1
@@ -139,7 +136,6 @@ class gif():
         BitIndex = 0
         newTableIndex = ImgEndCode + 1
         ByteCount = 0
-        BlockN = 0
         FirstCodeFlag = False
         newentry = None
         
@@ -159,13 +155,12 @@ class gif():
                     ByteCount = src.read(1)[0]
                     datablock = src.read(ByteCount)
                     datablockIndex = 0
-                    BlockN += 1
                                 
                 if BitIndex == 0:
                     byte = datablock[datablockIndex]
                     datablockIndex += 1
                     ByteCount -= 1
-
+                
                 if (byte >> BitIndex) & 1:
                     CodeKey = CodeKey | 1<<i
                 BitIndex += 1
@@ -233,116 +228,6 @@ class gif():
         if (len(indexStream)>0):
             self.decoded.append(indexStream)
             
-    def lzw_DecodeToScreen(self,data,callback,startPos,frameSize,palBits,useColor565=True,useram=False,monocrome=False):
-        # code from: https://github.com/qalle2/pygif/blob/main/gifdec.py
-        # decode Lempel-Ziv-Welch (LZW) data (bytes)
-        # palBits: palette bit depth in LZW encoding (2-8)
-        # return: indexed image data (bytes)
-        #outSrc    = open(OutputFilePath, "wb")
-        pos       = 0                 # byte position in LZW data
-        bitPos    = 0                 # bit position within LZW data byte (0-7)
-        codeLen   = palBits + 1       # current length of LZW codes, in bits (3-12)
-        code      = 0                 # current LZW code (0-4095)
-        prevCode  = None              # previous code for dictionary entry or None
-        clearCode = 2 ** palBits      # LZW clear code
-        endCode   = 2 ** palBits + 1  # LZW end code
-        entry     = bytearray()       # reconstructed dictionary entry
-        codeCount = 0                 # number of LZW codes read (statistics only)
-        bitCount  = 0                 # number of LZW bits read (statistics only)
-        decoded_data = bytearray()
-        outbyte = 0b00000000
-        bit_index = 0
-        # LZW dictionary: index = code, value = entry (reference to another code,
-        # final byte)
-        lzwDict = [(None, i) for i in range(2 ** palBits + 2)]
-        imageDataLen = 0
-        scr_x = startPos[0]
-        scr_y = startPos[1]
-        while True:
-            # get current LZW code (0-4095) from remaining data:
-            # 1) get the 1-3 bytes that contain the code; equivalent to:
-            # codeByteCnt = ceil((bitPos + codeLen) / 8)
-            codeByteCnt = (bitPos + codeLen + 7) // 8
-            if pos + codeByteCnt > len(data):
-                sys.exit("Unexpected end of file.")
-            codeBytes = data[pos:pos+codeByteCnt]
-            # 2) convert the bytes into an integer (first byte = least significant)
-            code = sum(b << (i * 8) for (i, b) in enumerate(codeBytes))
-            # 3) delete previously-read bits from the end and unnecessary bits
-            # from the beginning; equivalent to:
-            # code = (code >> bitPos) % 2 ** codeLen
-            code = (code >> bitPos) & ((1 << codeLen) - 1)
-
-            # advance byte/bit position so the next code can be read correctly
-            bitPos += codeLen
-            pos += bitPos >> 3  # pos += bitPos // 8
-            bitPos &= 0b111     # bitPos %= 8
-
-            # update statistics
-            codeCount += 1
-            bitCount += codeLen
-            if code == clearCode:
-                # LZW clear code:
-                # reset dict. & code length; don't add dict. entry with next code
-                lzwDict = lzwDict[:2**palBits+2]
-                codeLen = palBits + 1
-                prevCode = None
-            elif code == endCode:
-                break
-            elif code > len(lzwDict):
-                sys.exit("Invalid LZW code.")
-            else:
-                # dictionary entry
-                if prevCode is not None:
-                    # add new entry (previous code, first byte of current/previous
-                    # entry)
-                    suffixCode = code if code < len(lzwDict) else prevCode
-                    while suffixCode is not None:
-                        (suffixCode, suffixByte) = lzwDict[suffixCode]
-                    lzwDict.append((prevCode, suffixByte))
-                    prevCode = None
-                # reconstruct and store entry
-                entry =  bytearray(b'')
-                referredCode = code
-                while referredCode is not None:
-                    (referredCode, byte) = lzwDict[referredCode]
-                    entry.append(byte)
-                entry = ByteArrayReverse(entry)
-                
-                for i,byte in enumerate(entry):
-                    count = i+imageDataLen
-                    scr_x = count%frameSize[0] + startPos[0]
-                    if scr_x == startPos[0] and count != 0:
-                         scr_y+= 1
-                    if monocrome:
-                        callback(scr_x,scr_y,byte)
-                        outbyte =  outbyte | (byte << bit_index)
-                        bit_index += 1
-                        if bit_index > 7:
-                            bit_index = 0 
-                            decoded_data.append(outbyte)
-                            outbyte = 0b00000000
-                    else:
-                        if useColor565:
-                            callback(scr_x,scr_y,self.ColorTable565[byte])
-                        else:
-                            callback(scr_x,scr_y,self.ColorTable[byte])
-                    
-                imageDataLen += len(entry)
-                # prepare to add a dictionary entry
-                if len(lzwDict) < 2 ** 12:
-                    prevCode = code
-                if len(lzwDict) == 2 ** codeLen and codeLen < 12:
-                    codeLen += 1
-                if useram and not monocrome:
-                    decoded_data += entry
-
-            gc.collect()
-        if (len(decoded_data)>0):
-            #print(len(decoded_data))
-            self.decoded.append(decoded_data)
-            #print(f"LZW data: {codeCount} codes, {bitCount} bits, {imageDataLen} pixels")
-    
     @micropython.native
     def getColorTable(self,src,ColorTableLen):
         for i in range(ColorTableLen):
