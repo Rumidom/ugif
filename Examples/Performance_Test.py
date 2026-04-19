@@ -35,6 +35,7 @@ buffer_height = 1
 line_buffer = bytearray(screen_width*buffer_height*2)
 line_buffer = bytearray()
 
+# drawToScreen_LinebyLine is faster
 def drawToScreen_LinebyLine(x,y,color):
     global line_buffer 
     line_buffer.extend(color.to_bytes(2,'big'))
@@ -45,22 +46,9 @@ def drawToScreen_LinebyLine(x,y,color):
 def drawToScreen_PixelbyPixel(x,y,color):
     display.pixel(x,y,color)
 
-# drawToScreen_LinebyLine is faster
 display.fill(0)
 gif_obj = gif('jake.gif')
 print('-Test Start-')
-#print('')
-#print('func: lzw_DecodeToScreen')
-#print(micropython.mem_info())
-#initTime = time.ticks_ms()
-#gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine,testFlag = False)
-#print('Completed')
-#print(micropython.mem_info())
-#print('Time To Complete: ',time.ticks_diff(time.ticks_ms() , initTime),' ms')
-#print('')
-
-display.fill(0)
-gif_obj = gif('jake.gif')
 print('func: lzw_DecompressToScreen')
 print(micropython.mem_info())
 initTime = time.ticks_ms()

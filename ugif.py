@@ -141,7 +141,6 @@ class gif():
         ByteCount = 0
         BlockN = 0
         FirstCodeFlag = False
-        ZeroBlockLenFlag = False
         newentry = None
         
         ## Output to ram
