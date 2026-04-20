@@ -30,11 +30,14 @@ display = st7789.ST7789(
     backlight=Pin(7, Pin.OUT),
     rotation=screen_rotation)
 
+
+def drawToScreen_PixelbyPixel(x,y,color):
+    display.pixel(x,y,color)
+
 buffer_width = 240
 buffer_height = 1
 line_buffer = bytearray(screen_width*buffer_height*2)
 line_buffer = bytearray()
-
 # drawToScreen_LinebyLine is faster
 def drawToScreen_LinebyLine(x,y,color):
     global line_buffer 
@@ -42,16 +45,23 @@ def drawToScreen_LinebyLine(x,y,color):
     if x == buffer_width-1 and y%buffer_height == 0 and y!=0:
         display.blit_buffer(line_buffer, 0, y, buffer_width, buffer_height)
         line_buffer = bytearray()
-        
-def drawToScreen_PixelbyPixel(x,y,color):
-    display.pixel(x,y,color)
 
+screenBuffer = bytearray(screen_width * screen_height * 2)
+fbuf = framebuf.FrameBuffer(screenBuffer, screen_width, screen_height, framebuf.RGB565)
+def drawToFrameBuffer(x,y,color):
+    fbuf.pixel(x,y,color)
 
-display.fill(0)
+#display.fill(0)
 gif_obj = gif('jake.gif')
 print('-Test Start-')
-print('func: lzw_DecompressToScreen')
+#print('func: lzw_DecompressToScreen')
+#initTime = time.ticks_ms()
+#gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine,testFlag = True)
+#print('Completed')
+#print('Time To Complete: ',time.ticks_diff(time.ticks_ms() , initTime),' ms')
+display.fill(0)
 initTime = time.ticks_ms()
-gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine,testFlag = True)
+gif_obj.BlitFrameToScreen(0,drawToFrameBuffer,testFlag = True)
+display.blit_buffer(screenBuffer,0,0,screen_width,screen_height)
 print('Completed')
 print('Time To Complete: ',time.ticks_diff(time.ticks_ms() , initTime),' ms')

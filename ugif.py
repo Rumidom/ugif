@@ -10,6 +10,12 @@ def ByteArrayReverse(Barr:ptr8,BarrOut:ptr8,l:int):
     for x in range(l):
         BarrOut[x] = Barr[l-1-x]
 
+@micropython.viper
+def Set_IntBit(Var:int,mask:int,maskindex:int,Varindex:int)->int:
+    if mask >> maskindex & 1:
+        Var = Var | 1<<Varindex
+    return Var
+
 def color565(red, green=0, blue=0):
     """
     Convert red, green and blue values (0-255) into a 16-bit 565 encoding.
@@ -332,7 +338,7 @@ class gif():
         #print('FreeMem:',gc.mem_free())
         
     @micropython.native
-    def BlitFrameToScreen(self,FrameIndex,callback,testFlag = False):
+    def BlitFrameToScreen(self,FrameIndex,callback):
         startTime = time.time()
         frame_x = self.Frames[FrameIndex]['img'][0]
         frame_y = self.Frames[FrameIndex]['img'][1]
@@ -347,11 +353,7 @@ class gif():
             frameLZW_min = src.read(1)[0]
             #frameCompData = self.ReadFrameData(src)
             #self.lzw_DecodeToScreen(frameCompData,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
-            if testFlag:
-                self.lzw_DecompressToScreen(src,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
-            else:
-                frameCompData = self.ReadFrameData(src)
-                self.lzw_DecodeToScreen(frameCompData,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.monocrome)
+            self.lzw_DecompressToScreen(src,callback,startPos,frameSize,frameLZW_min,monocrome=self.monocrome,useram=self.useram)
             src.close()
         #print('frameData Ready')
         #print('start',startPos)
