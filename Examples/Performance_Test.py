@@ -12,13 +12,13 @@ screen_height = 240
 screen_rotation = 3
 
 spi = SPI(1,
-          baudrate=31250000,
-          polarity=1,
-          phase=1,
-          bits=8,
-          firstbit=SPI.MSB,
-          sck=Pin(4),
-          mosi=Pin(5))
+baudrate=31250000,
+polarity=1,
+phase=1,
+bits=8,
+firstbit=SPI.MSB,
+sck=Pin(4),
+mosi=Pin(5))
 
 display = st7789.ST7789(
     spi,
@@ -46,22 +46,11 @@ def drawToScreen_LinebyLine(x,y,color):
         display.blit_buffer(line_buffer, 0, y, buffer_width, buffer_height)
         line_buffer = bytearray()
 
-screenBuffer = bytearray(screen_width * screen_height * 2)
-fbuf = framebuf.FrameBuffer(screenBuffer, screen_width, screen_height, framebuf.RGB565)
-def drawToFrameBuffer(x,y,color):
-    fbuf.pixel(x,y,color)
-
-#display.fill(0)
+display.fill(0)
 gif_obj = gif('jake.gif')
 print('-Test Start-')
-#print('func: lzw_DecompressToScreen')
-#initTime = time.ticks_ms()
-#gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine,testFlag = True)
-#print('Completed')
-#print('Time To Complete: ',time.ticks_diff(time.ticks_ms() , initTime),' ms')
-display.fill(0)
+print('func: lzw_DecompressToScreen')
 initTime = time.ticks_ms()
-gif_obj.BlitFrameToScreen(0,drawToFrameBuffer,testFlag = True)
-display.blit_buffer(screenBuffer,0,0,screen_width,screen_height)
+gif_obj.BlitFrameToScreen(0,drawToScreen_LinebyLine)
 print('Completed')
 print('Time To Complete: ',time.ticks_diff(time.ticks_ms() , initTime),' ms')

@@ -177,12 +177,14 @@ class gif():
                 codeTable = array('i',[])
                 byteTable = bytearray()
                 newTableIndex = ImgEndCode
+                FirstCodeFlag = False
                 CodeLen = LZW_Min_Code+1         
             elif CodeKey == ImgEndCode:
                 break
             else:
-                if ImgEndCode == newTableIndex:
+                if not FirstCodeFlag:
                     newEntry = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)
+                    FirstCodeFlag = True
                 else:
                     if (CodeKey < newTableIndex):
                         codearr = self.get_CodeValue(CodeKey,codeTable,byteTable,ColorTableLen)
@@ -192,10 +194,12 @@ class gif():
                         lastcodearr = self.get_CodeValue(lastCode,codeTable,byteTable,ColorTableLen)
                         K = lastcodearr[0]
                         newEntry = lastcodearr + bytearray([K])                    
-
-                    codeTable.append(lastCode)
-                    byteTable.append(K)
-
+                    try:
+                        codeTable.append(lastCode)
+                        byteTable.append(K)
+                    except Exception as e:
+                        print(micropython.mem_info())
+                        raise(e)
                         
                     if newTableIndex >= 2**CodeLen-1:
                         if CodeLen < 12:
