@@ -52,10 +52,13 @@ https://github.com/user-attachments/assets/bd1c00c3-2735-452e-a132-a9631fec73a7
 - [x] Add animation support
 - [x] Use 1 bit per color to save ram on monocrome mode
 - [ ] Implement all disposal methods for compatibility
-- [ ] Optimize with native/viper decorators
+- [x] Optimize with native/viper decorators
   
 # LICENSE:
 this project is [MIT licensed](https://github.com/Rumidom/micropython_fontlib/blob/main/LICENSE)
+
+# Thanks:
+Special thanks to the [GIFLIB](https://giflib.sourceforge.net/whatsinagif/index.html) team for providing a comprehesive explanation of the GIF specification. And [qalle2](https://github.com/qalle2) who made a performant implementation of a GIF decoder([pygif](https://github.com/qalle2/pygif)) which gave me a benchmark to compare against.
 
 # Support
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/M4M41NQV7I)
